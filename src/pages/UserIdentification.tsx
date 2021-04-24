@@ -7,8 +7,10 @@ import {
   View,
   KeyboardAvoidingView,
   Platform,
+  Alert,
 } from 'react-native'
 import { useNavigation } from '@react-navigation/core'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 
 import colors from '../../styles/colors'
 import fonts from '../../styles/fonts'
@@ -20,9 +22,26 @@ export const UserIdentification: React.FC = () => {
   const [name, setName] = useState<string>()
   const navigation = useNavigation()
 
-  const handleSubmit = useCallback(() => {
-    navigation.navigate('Confirmation')
-  }, [navigation])
+  const handleSubmit = useCallback(async () => {
+    if (!name) {
+      return Alert.alert('Me diz como chamar você 😢')
+    }
+
+    try {
+      await AsyncStorage.setItem('@plantmanager:user', name)
+
+      navigation.navigate('Confirmation', {
+        title: 'Prontinho',
+        subtitle:
+          'Agora vamos começar a cuidar das suas plantinhas com muito cuidado.',
+        buttonTitle: 'Começar',
+        icon: 'smile',
+        nextScreen: 'PlantSelect',
+      })
+    } catch {
+      Alert.alert('Não foi possível salvar o seu nome. 😢')
+    }
+  }, [navigation, name])
 
   const handleInputBlur = useCallback(() => {
     setIsFocused(false)
@@ -64,11 +83,7 @@ export const UserIdentification: React.FC = () => {
             />
 
             <View style={styles.footer}>
-              <Button
-                title="Confirmar"
-                onPress={handleSubmit}
-                disabled={!isFilled}
-              />
+              <Button title="Confirmar" onPress={handleSubmit} />
             </View>
           </View>
         </View>
@@ -98,7 +113,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   emoji: {
-    fontSize: 28,
+    fontSize: 78,
   },
   title: {
     fontSize: 24,

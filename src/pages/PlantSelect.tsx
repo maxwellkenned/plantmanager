@@ -6,11 +6,13 @@ import {
   FlatList,
   ActivityIndicator,
 } from 'react-native'
+import { useNavigation } from '@react-navigation/core'
 
 import api from '../services/api'
 
 import colors from '../../styles/colors'
 import fonts from '../../styles/fonts'
+import { IPlantProps } from '../libs/storage'
 
 import { Header } from '../components/Header'
 import { Loading } from '../components/Loading'
@@ -22,29 +24,16 @@ interface IEnvionmentProps {
   title: string
 }
 
-interface IPlantsProps {
-  id: number
-  name: string
-  about: string
-  water_tips: string
-  photo: string
-  environments: string[]
-  frequency: {
-    times: number
-    repeat_every: string
-  }
-}
-
 export const PlantSelect: React.FC = () => {
+  const navigation = useNavigation()
   const [envionments, setEnvionments] = useState<IEnvionmentProps[]>()
-  const [plants, setPlants] = useState<IPlantsProps[]>()
-  const [filteredPlants, setFilteredPlants] = useState<IPlantsProps[]>()
+  const [plants, setPlants] = useState<IPlantProps[]>([])
+  const [filteredPlants, setFilteredPlants] = useState<IPlantProps[]>([])
   const [envionmentSelected, setEnvionmentSelected] = useState('all')
   const [loading, setLoading] = useState(true)
 
   const [page, setPage] = useState(1)
   const [loadingMore, setLoadingMore] = useState(true)
-  const [loadedAll, setLoadedAll] = useState(false)
 
   const fetchPlants = useCallback(async () => {
     const { data } = await api.get('plants', {
@@ -52,12 +41,12 @@ export const PlantSelect: React.FC = () => {
         _sort: 'name',
         _order: 'asc',
         _page: page,
-        _limit: 8,
+        _limit: 10,
       },
     })
 
     if (!data) {
-      return setLoadedAll(true)
+      return setLoading(true)
     }
 
     if (page > 1) {
@@ -90,16 +79,23 @@ export const PlantSelect: React.FC = () => {
   )
 
   const handleFetchMore = useCallback(
-    (distance: number) => {
+    async (distance: number) => {
       if (distance < 1) {
         return
       }
 
       setLoadingMore(true)
       setPage(oldValue => oldValue + 1)
-      fetchPlants()
+      await fetchPlants()
     },
     [fetchPlants]
+  )
+
+  const handlePlantSelect = useCallback(
+    (plant: IPlantProps) => {
+      navigation.navigate('PlantSave', { plant })
+    },
+    [navigation]
   )
 
   useEffect(() => {
@@ -135,6 +131,7 @@ export const PlantSelect: React.FC = () => {
       <View style={styles.environmnetList}>
         <FlatList
           data={envionments}
+          keyExtractor={item => String(item.key)}
           renderItem={({ item }) => (
             <EnvironmentButton
               title={item.title}
@@ -150,7 +147,13 @@ export const PlantSelect: React.FC = () => {
       <View style={styles.plants}>
         <FlatList
           data={filteredPlants}
-          renderItem={({ item }) => <PlantCardPrimary data={item} />}
+          keyExtractor={item => String(item.id)}
+          renderItem={({ item }) => (
+            <PlantCardPrimary
+              data={item}
+              onPress={() => handlePlantSelect(item)}
+            />
+          )}
           showsVerticalScrollIndicator={false}
           numColumns={2}
           onEndReachedThreshold={0.1}
@@ -158,7 +161,7 @@ export const PlantSelect: React.FC = () => {
             handleFetchMore(distanceFromEnd)
           }
           ListFooterComponent={
-            loadingMore && <ActivityIndicator color={colors.green} />
+            loadingMore ? <ActivityIndicator color={colors.green} /> : <></>
           }
         />
       </View>
